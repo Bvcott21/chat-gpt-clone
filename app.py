@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_chat import message
-from langchain import OpenAI
+from langchain_community.chat_models import ChatOpenAI
 from langchain.chains import ConversationChain
 from langchain.chains.conversation.memory import (
     ConversationBufferMemory,
@@ -11,10 +11,17 @@ from langchain.chains.conversation.memory import (
 if 'conversation' not in st.session_state:
     st.session_state['conversation'] = None
 
-def get_response(user_input):
+if 'messages' not in st.session_state:
+    st.session_state['messages'] = []
+
+if 'API_KEY' not in st.session_state:
+    st.session_state['API_KEY'] = ''
+
+def get_response(user_input, api_key):
     if st.session_state['conversation'] is None:
-        llm = OpenAI(
+        llm = ChatOpenAI(
             temperature = 0,
+            openai_api_key = api_key,
             model_name = "gpt-3.5-turbo"
         )
 
@@ -41,7 +48,7 @@ st.markdown(
 
 ### Setting side bar ###
 st.sidebar.title("😎")
-api_key = st.sidebar.text_input(
+st.session_state['API_KEY'] = st.sidebar.text_input(
     "What's your API key?",
     type = "password"
 )
@@ -52,8 +59,8 @@ summarize_button = st.sidebar.button(
 )
 
 if summarize_button:
-    summarise_placeholder = st.sidebar.write("Summary:\n\n") 
-    # summarise_placeholder.write("Summary:\n\n"+ st.session_state['conversation'].memory.buffer)
+    summarise_placeholder = st.sidebar.write("Summary:\n\n" + st.session_state['conversation'].memory.buffer) 
+    #summarise_placeholder.write("Summary:\n\n"+ st.session_state['conversation'].memory.buffer)
 
 
 ### Setting container for user input ###
@@ -73,13 +80,16 @@ with container:
         submit_button = st.form_submit_button(label = 'Send')
         
         if submit_button:
-            answer = get_response(user_input)
+            st.session_state['messages'].append(user_input)
+            model_response = get_response(user_input, st.session_state['API_KEY'])
+            st.session_state['messages'].append(model_response)
 
             with response_container:
-                st.write(answer)
-    
+                for i in range(len(st.session_state['messages'])):
+                    if(i % 2) == 0:
+                        message(st.session_state['messages'][i], is_user = True, key = str(i) + '_user')
+                    else:
+                        message(st.session_state['messages'][i], key=str(i) + "_AI")
 
-import os
-os.environ["OPENAI_API_KEY"] = "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"
 
 
